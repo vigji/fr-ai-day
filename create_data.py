@@ -17,10 +17,6 @@ for old, new in [("asistente", "assistente"), ("fondaizoni", "fondazioni"), ("fo
     df["Mansioni"] = df["Mansioni"].str.replace(old, new)
 df = df[~df["Mansioni"].isin(["basiliano"])]
 
-df_domanda = df[["Num", "Naz", "Cantiere", "Mansioni"]]
-
-df_offerta = df[["Cognome", "Nome", "Mansioni"]]
-
 # df_cantieri = df[["Num", "Naz", "Cantiere"]]
 
 # Generate random locations for each unique cantiere
@@ -39,29 +35,43 @@ locations = {
     for cantiere in unique_cantieri
 }
 
-df_domanda = df_domanda.copy()
-df_domanda["location"] = df_domanda["Cantiere"].map(locations)
+df = df.copy()
+df["location"] = df["Cantiere"].map(locations)
 
-# Add random locations for each person
-df_offerta = df_offerta.copy()
-df_offerta["location"] = [generate_random_location() for _ in range(len(df_offerta))]
+for i, coord in enumerate(["x", "y"]):
+    df[coord] = df["location"].apply(lambda loc: loc[i])
 
-for df in [df_domanda, df_offerta]:
-    for i, coord in enumerate(["x", "y"]):
-        df[coord] = df["location"].apply(lambda loc: loc[i])
+
+df_domanda = df[["Num", "Naz", "Cantiere", "Mansioni", "location"]].copy()
+
+# Replace "Cantiere" with random geographic location name using faker
+city_mapping = {cantiere: fake.city() for cantiere in unique_cantieri}
+df_domanda["Cantiere"] = df_domanda["Cantiere"].map(city_mapping)
+
+df_offerta = df[["Cognome", "Nome", "Mansioni", "location"]].copy()
 
 # Replace names and surnames in df_offerta with random ones
 df_offerta["Nome"] = [fake.first_name() for _ in range(len(df_offerta))]
 df_offerta["Cognome"] = [fake.last_name() for _ in range(len(df_offerta))]
 
-# Replace "Cantiere" with random geographic location name using faker
-city_mapping = {cantiere: fake.city() for cantiere in unique_cantieri}
-df_domanda["Cantiere"] = df_domanda["Cantiere"].map(city_mapping)
+# Add some noise to the coordinates
+noise = 1
+df_offerta["x"] = df_offerta["x"] + np.random.uniform(-noise, noise, len(df_offerta))
+df_offerta["y"] = df_offerta["y"] + np.random.uniform(-noise, noise, len(df_offerta))
 
 dest_dir = Path(__file__).parent / "assets"
 dest_dir.mkdir(exist_ok=True)
 
 df_offerta.to_csv(dest_dir / "offerta.csv", index=False)
 df_domanda.to_csv(dest_dir / "domanda.csv", index=False)
+
+plt.figure(figsize=(10, 10))
+plt.scatter(df_offerta["x"], df_offerta["y"], label="Offerta", s=5)
+plt.scatter(df_domanda["x"], df_domanda["y"], label="Domanda", s=5)
+# plt.legend()
+plt.show()
+
+
+# %%
 
 # %%
